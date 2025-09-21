@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(cors())
 
 app.get('/',(req,res)=>res.send('Server is Running Successfully.'))
-app.use('/api/inngest',serve({ client: inngest, functions }))
+app.use('/api/inngest',serve({ client: inngest, functions })) // add this endpoint while connecting apps in inngest (after deploying the server on vercel i.e server link/api/inngest)
 
 const PORT = process.env.PORT || 5000;
 
