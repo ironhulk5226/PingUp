@@ -1,0 +1,93 @@
+export const updateUserData = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    let { username, bio, location, full_name } = req.body;
+
+    const tempUser = await User.findById(userId);
+    if (!tempUser) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    // if username not provided, keep old one
+    if (!username) username = tempUser.username;
+
+    // check if username is taken
+    if (tempUser.username !== username) {
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        username = tempUser.username; // fallback to old username
+      }
+    }
+
+    const updatedData = {
+      username,
+      bio,
+      location,
+      full_name,
+    };
+
+    const profile = req.files.profile && req.files.profile[0];
+    const cover = req.files.cover && req.files.cover[0];
+
+    if (profile) {
+      try {
+        const buffer = fs.readFileSync(profile.path);
+        const fileStr = `data:${profile.mimetype};base64,${buffer.toString("base64")}`;
+
+        console.log('Attempting to upload profile image to Cloudinary...');
+        const response = await cloudinary.uploader.upload(fileStr, {
+          folder: "pingup",
+          resource_type: "image",
+          transformation: [
+            { quality: "auto" },
+            { fetch_format: "auto" },
+            { width: 512, crop: "scale" },
+          ],
+        });
+
+        console.log('Cloudinary upload successful:', response.secure_url);
+        updatedData.profile_picture = response.secure_url; // save URL to DB
+      } catch (error) {
+        console.error('Error uploading profile image to Cloudinary:', error);
+        return res.json({ success: false, message: `Error uploading profile image: ${error.message}` });
+      }
+    }
+
+    if (cover) {
+      try {
+        const buffer = fs.readFileSync(cover.path);
+        const fileStr = `data:${cover.mimetype};base64,${buffer.toString("base64")}`;
+
+        console.log('Attempting to upload cover image to Cloudinary...');
+        const response = await cloudinary.uploader.upload(fileStr, {
+          folder: "pingup",
+          resource_type: "image",
+          transformation: [
+            { quality: "auto" },
+            { fetch_format: "auto" },
+            { width: 1280, crop: "scale" },
+          ],
+        });
+
+        console.log('Cloudinary cover upload successful:', response.secure_url);
+        updatedData.cover_photo = response.secure_url; // save URL to DB
+      } catch (error) {
+        console.error('Error uploading cover image to Cloudinary:', error);
+        return res.json({ success: false, message: `Error uploading cover image: ${error.message}` });
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updatedData, {
+      new: true,
+    });
+
+    res.json({
+      success: true,
+      user,
+      message: "User Profile Updated Successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};

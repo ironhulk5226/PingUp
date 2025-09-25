@@ -1,5 +1,7 @@
 import { Inngest } from "inngest";
+import Connection from "../models/connection.js";
 import User from "../models/user.js";
+import sendMail from "../configs/nodemailer.js";
 
 
 
@@ -63,7 +65,71 @@ const syncUserDeletion = inngest.createFunction(
 
 )
 
+//inngest function to send reminder when a new connection request is added
+// 4. await step.run('send-connection-request-mail', async () => { ... })
+// Defines a step inside your function, with a name "send-connection-request-mail".
+// Steps make your function idempotent (if it fails, only this step retries).
+// Inside this step, you actually send the email.
+
+const sendNewConnectionRequestReminder = inngest.createFunction(
+    {id:'send-new-connection-request-reminder'},
+    {event:'app/connection-reqiest'},
+    async({event,step})=>{
+        const {connectionId} = event.data;
+
+        await step.run('send-connection-request-mail',async()=>{
+            const connection = await Connection.findById(connectionId).populate('from_user_id','to_user_id')
+            const subject = `👋 New Connection Request`
+            const body = `
+            <div style="font-family:Arial,sans-serif;padding:20px;"> 
+            <h2>Hi ${connection.to_user_id.full_name},</h2>
+            <p> You have a new conection request from ${connection.from_user_id.full_name} - @${connection.from_user_id.username}</p>
+            <p>Click <a href="${process.env.FRONTEND_URL}/connections" style="color:#10b981">here</a> to accept or reject the request</p>
+            <br/>
+            <p>Thanks,<br/>PingUp - Stay Connected.</p>
+            </div>
+            `;
+
+            await sendMail({
+                to:connection.to_user_id.email,
+                subject,
+                body
+            })
+
+            const in24Hours = new Date(Date.now()+ 24*60*60*1000)
+            await step.sleepUntil('wait-for-24-hours',in24Hours)
+            await step.run('send-connection-request-reminder',async()=>{
+                const connection = await Connection.findById(connectionId).populate('from_user_id','to_user_id')
+
+                if(connection.status === 'accepted'){
+                    return {message:"Already Accepted"}
+                }
+
+                const subject = `👋 New Connection Request`
+            const body = `
+            <div style="font-family:Arial,sans-serif;padding:20px;"> 
+            <h2>Hi ${connection.to_user_id.full_name},</h2>
+            <p> You have a new conection request from ${connection.from_user_id.full_name} - @${connection.from_user_id.username}</p>
+            <p>Click <a href="${process.env.FRONTEND_URL}/connections" style="color:#10b981">here</a> to accept or reject the request</p>
+            <br/>
+            <p>Thanks,<br/>PingUp - Stay Connected.</p>
+            </div>
+            `;
+
+            await sendMail({
+                to:connection.to_user_id.email,
+                subject,
+                body
+            })
+
+            return {message:"Reminder sent"}
+
+            })
+        })
+    }
+)
+
 // Create an empty array where we'll export future Inngest functions
 export const functions = [
-    syncUserCreation , syncUserDeletion , syncUserUpdation
+    syncUserCreation , syncUserDeletion , syncUserUpdation , sendNewConnectionRequestReminder
 ];

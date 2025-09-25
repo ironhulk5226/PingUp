@@ -7,9 +7,10 @@ import Connections from "./pages/Connections"
 import Discover from "./pages/Discover"
 import Profile from "./pages/Profile"
 import CreatePost from "./pages/CreatePost"
-import { useUser } from "@clerk/clerk-react"
+import { useUser, useAuth } from "@clerk/clerk-react"
 import Layout from "./pages/Layout"
 import { Toaster } from "react-hot-toast"
+import { useEffect } from "react"
 // index? meaning:
 // When you go to / (the root URL):
 // React will first load <Login />.
@@ -18,7 +19,16 @@ import { Toaster } from "react-hot-toast"
 // Since you wrote <Route index element={<Feed />} />, that means:
 // 👉 By default, show <Feed /> inside <Login />.
 function App() {
+  const {getToken} = useAuth();
   const {user} = useUser();
+
+  useEffect(()=>{
+    if(user){
+      getToken().then((token)=>console.log(token))
+    }
+  },[user])
+
+
   return (
     <>
     {/* now we can use Toaster notifications in any file */}
