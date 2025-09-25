@@ -1,10 +1,9 @@
 import { format } from "path";
-import imagekit from "../configs/imageKit.js";
 import User from "../models/user.js";
 import fs from "fs";
 import cloudinary from "../configs/cloudinary.js";
 import Connection from "../models/connection.js";
-import { connection, connections } from "mongoose";
+
 
 // with multer uploaded file object looks like
 // {
@@ -168,7 +167,7 @@ export const updateUserData = async (req, res) => {
 export const discoverUsers = async (req, res) => {
   try {
     const { userId } = req.auth();
-    const { input } = req.body();
+    const { input } = req.body;
 
     const allUsers = await User.find({
       $or: [
@@ -180,7 +179,7 @@ export const discoverUsers = async (req, res) => {
       ],
     });
 
-    const filteredUsers = allUsers.filter((user) => user._id !== userId); // excluding the logged in user i.e your own profile while searching
+    const filteredUsers = allUsers.filter((user) => user._id.toString() !== userId); // excluding the logged in user i.e your own profile while searching
 
     res.json({ success: true, users: filteredUsers });
   } catch (error) {
@@ -193,7 +192,7 @@ export const discoverUsers = async (req, res) => {
 export const FollowUsers = async (req, res) => {
   try {
     const { userId } = req.auth(); // logged in user's id
-    const { id } = req.body(); // the id of the user whom logged in user wants to follow
+    const { id } = req.body; // the id of the user whom logged in user wants to follow
 
     const user = await User.findById(userId);
 
@@ -205,13 +204,13 @@ export const FollowUsers = async (req, res) => {
       });
     }
 
-    // updating logged in users followers
-    user.followers.push(id);
+    // updating logged in users following (not followers)
+    user.following.push(id);
     await user.save();
 
-    // updating followers the user to be followed
+    // updating followers of the user to be followed
     const toUser = await User.findById(id);
-    toUser.following.push(userId);
+    toUser.followers.push(userId);
     await toUser.save();
 
     res.json({ success: true, message: "User Followed Successfully" });
@@ -318,10 +317,10 @@ export const getUserConnection = async (req, res) => {
   try {
     const { userId } = req.auth();
     const user = await User.findById(userId).populate(
-      "connection , followers, following"
+      "connections followers following"
     );
 
-    const connection = user.connections;
+    const connections = user.connections;
     const followers = user.followers;
     const following = user.following;
 
@@ -331,7 +330,7 @@ export const getUserConnection = async (req, res) => {
     }).populate("from_user_id");
 
     const pendingUsers = pendingConnections.map((conn) => conn.from_user_id);
-    res.json({success:true,connections,followers,following,pendingUsers})
+    res.json({success: true, connections, followers, following, pendingUsers});
   } catch (error) {
     console.log(error);
     res.json({
@@ -345,36 +344,32 @@ export const getUserConnection = async (req, res) => {
 // Accept user connection
 export const acceptConnectionRequest = async(req,res)=>{
   try {
-    const{userId} = req.auth();
-    const{id} = req.body;
+    const { userId } = req.auth();
+    const { id } = req.body;
 
     const connection = await Connection.findOne({
-      from_user_id:id,
-      to_user_id:userId
-    })
+      from_user_id: id,
+      to_user_id: userId
+    });
 
     if(!connection){
-      return res.json({success:false, message:"Connection not found"});
+      return res.json({success: false, message: "Connection not found"});
     }
 
     const user = await User.findById(userId);
     user.connections.push(id);
     await user.save();
 
-    const toUser = await User.findById(id)
+    const toUser = await User.findById(id);
     toUser.connections.push(userId);
     await toUser.save();
 
     connection.status = 'accepted';
     await connection.save();
 
-    res.json({success:true,message:"Connection accepted successfully"})
-
-
-
-
+    res.json({success: true, message: "Connection accepted successfully"});
   } catch (error) {
     console.log(error);
-    res.json({success:false,message:error.message})
+    res.json({success: false, message: error.message});
   }
 }
