@@ -3,7 +3,7 @@ import Connection from "../models/connection.js";
 import User from "../models/user.js";
 import sendMail from "../configs/nodemailer.js";
 import Story from "../models/story.js";
-import Message from "../models/messsage.js";
+import Message from "../models/message.js";
 
 
 
