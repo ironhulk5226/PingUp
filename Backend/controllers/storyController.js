@@ -42,10 +42,15 @@ export const addUserStory = async(req,res)=>{
         })
 
         // schedule / invoke story deletion after 24 hours
-        await inngest.send({
-            name:'app/story.delete',
-            data:{storyId:story._id}
-        })
+        try {
+            await inngest.send({
+                name:'app/story.delete',
+                data:{storyId:story._id}
+            });
+        } catch (inngestError) {
+            console.log("Inngest error (story will be handled by TTL index):", inngestError.message);
+            // Continue without Inngest - stories will expire naturally through MongoDB TTL index
+        }
 
         return res.json({success:true , message:"Story Created Successfully"})
 

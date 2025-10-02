@@ -7,6 +7,10 @@ import PostCard from '../components/PostCard';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import ProfileModel from '../components/profileModel'
+import { useAuth } from '@clerk/clerk-react';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
+import { useSelector } from 'react-redux';
 
 
 const Profile = () => {
@@ -15,17 +19,38 @@ const Profile = () => {
   const [posts, setPosts] = useState([])
   const [activeTab, setActiveTab] = useState('Posts')
   const [showEdit, setShowEdit] = useState(false)
+  const currentUser = useSelector((state)=>state.user.value)
+  const {getToken} = useAuth();
 
 
-  const fetchUser = async()=>{
-    setUser(dummyUserData)
-    setPosts(dummyPostsData)
+  const fetchUser = async(profileId)=>{
+    const token = await getToken();
+    try {
+      const {data} = await api.post(`/api/user/profiles`,{profileId},{
+        headers:{Authorization: `Bearer ${token}`}
+      })
+      if(data.success){
+        setUser(data.profile)
+        setPosts(data.posts)
+      }
+      else{
+        toast.error(data.message)
+      }
+    } catch (error) {
+        toast.error(error.message)
+
+    }
   
   }
 
   useEffect(()=>{
-    fetchUser()
-  },[])
+    if(profileId){
+      fetchUser(profileId)
+    }
+    else{
+      fetchUser(currentUser._id)
+    }
+  },[profileId,currentUser])
 
 
   return user? (
@@ -34,8 +59,8 @@ const Profile = () => {
         {/* Profile Card */}
         <div className='bg-white rounded-2xl shadow overflow-hidden'>
           {/* Cover Photo */}
-          <div className='h-40 md:h-56 bg-gradient-to-r from-indigo-200 via-purple-200 to-pink-200'>
-            {user.cover_photo && <img src={user.cover_photo} alt="" className='w-full h-full object-cover'/>}
+          <div className='h-40 md:h-56 bg-gradient-to-r from-indigo-200 via-purple-200 to-pink-200 relative overflow-hidden'>
+            {user.cover_photo && <img src={user.cover_photo} alt="" className='w-full h-full object-cover absolute inset-0'/>}
           </div>
           {/* User Info */}
           <UserProfileInfo user={user} posts={posts} profileId={profileId} setShowEdit={setShowEdit}/>
@@ -64,22 +89,17 @@ const Profile = () => {
           {/* Media */}
            {
             activeTab === 'Media' && (
-              <div className='flex flex-wrap mt-6 max-w-6xl'>
+              <div className='flex flex-wrap gap-2 justify-center mt-6 max-w-6xl mx-auto'>
                 {posts.filter((post)=>post.image_urls.length>0).map((post)=>(
-                  <>
+                  <React.Fragment key={post._id}>
                   {post.image_urls.map((image,index)=>(
-                  <Link target='_blank' to={image} key={index} className='relative group'>
-
-                    <img src={image} key={index} alt="" className='w-64 aspect-video object-cover' />
-
+                  <Link target='_blank' to={image} key={index} className='relative group overflow-hidden rounded-lg'>
+                    <img src={image} alt="" className='w-64 h-48 object-cover hover:scale-105 transition-transform duration-300' />
                     <p className='absolute bottom-0 right-0 text-xs p-1 px-3 backdrop-blur-xl text-white opacity-0 group-hover:opacity-100 transition duration-300'> Posted {moment(post.createdAt).fromNow()}</p>
                   </Link>
                 ))}
-                  
-                  </>
-                ))
-                
-                }
+                  </React.Fragment>
+                ))}
               </div>
             )}
 

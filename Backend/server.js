@@ -12,6 +12,7 @@ import userRouter from './routes/userRoutes.js';
 import cloudinary, { configureCloudinary } from './configs/cloudinary.js';
 import postRouter from "./routes/postRouter.js";
 import storyRouter from "./routes/storyRoutes.js";
+import messageRouter from "./routes/messageRouter.js";
 // Configure Cloudinary after environment variables are loaded
 configureCloudinary();
 
@@ -29,6 +30,7 @@ app.use('/api/inngest',serve({ client: inngest, functions })) // add this endpoi
 app.use('/api/user',userRouter)
 app.use('/api/post',postRouter)
 app.use('/api/story',storyRouter)
+app.use('/api/message',messageRouter)
 
 const PORT = process.env.PORT || 5000;
 

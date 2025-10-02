@@ -1,9 +1,15 @@
 import React,{useState} from 'react'
 import { dummyUserData } from '../assets/assets'
-import { Pencil } from 'lucide-react'
+import { Loader2, Pencil } from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux'
+import { updateUser } from '../features/user/userSlice'
+import { useAuth } from '@clerk/clerk-react'
+import toast from 'react-hot-toast'
+
 
 const ProfileModel = ({setShowEdit}) => {
-    const user = dummyUserData
+    const user = useSelector((state)=>state.user.value);
+    const [isLoading, setIsLoading] = useState(false);
     const [editForm , setEditForm] = useState({
         username:user.username,
         bio:user.bio,
@@ -12,15 +18,40 @@ const ProfileModel = ({setShowEdit}) => {
         cover_photo:null,
         full_name:user.full_name,
     })
+    const dispatch = useDispatch();
+    const {getToken} = useAuth();
 
     const handleSaveProfile = async(e)=>{
        e.preventDefault();
+       try {
+        setIsLoading(true);
+        const userData = new FormData();
+        const {username,bio,location,profile_picture,cover_photo,full_name} = editForm;
+        userData.append('username',username);
+        userData.append('bio',bio);
+        userData.append('location',location);
+        userData.append('full_name',full_name);
+        if(profile_picture){
+            userData.append('profile',profile_picture);
+        }
+        if(cover_photo){
+            userData.append('cover',cover_photo);
+        }
+
+        const token = await getToken();
+        await dispatch(updateUser({userData:userData,token}));
+        setShowEdit(false);
+       } catch (error) {
+        toast.error(error.message)
+       } finally {
+        setIsLoading(false);
+       }
     }
     
   return (
-    <div className='fixed inset-0 z-50 h-screen overflow-y-scroll bg-black/50 p-4'>
-        <div className='max-w-2xl w-full'>
-            <div className='bg-white rounded-lg shadow-lg p-6'>
+    <div className='fixed inset-0 z-50 h-screen overflow-y-auto bg-black/50 p-4 flex items-center justify-center'>
+        <div className='max-w-2xl w-full mx-auto my-8'>
+            <div className='bg-white rounded-lg shadow-lg p-6 max-h-[90vh] overflow-y-auto'>
                 <h1 className='text-2xl font-bold text-gray-900 mb-6'>
                     Edit Profile
                 </h1>
@@ -111,11 +142,20 @@ const ProfileModel = ({setShowEdit}) => {
                 </div>
                 {/* Buttons */}
                 <div className='flex justify-end space-x-3 pt-6'>
-                    <button type='button' onClick={()=>setShowEdit(false)} className='px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer'>Cancel</button>
+                    <button type='button' onClick={()=>setShowEdit(false)} className='px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-300 transition-colors cursor-pointer' disabled={isLoading}>Cancel</button>
                     <button type='submit'
-                    className='px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-white hover:from-indigo-600 hover:to-purple-700 transition-colors cursor-pointer'
-                    >Save Changes</button>
-
+                    className='px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-white hover:from-indigo-600 hover:to-purple-700 transition-colors cursor-pointer flex items-center justify-center gap-2'
+                    disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        'Save Changes'
+                      )}
+                    </button>
                 </div>
 
 

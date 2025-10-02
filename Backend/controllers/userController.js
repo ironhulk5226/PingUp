@@ -49,19 +49,34 @@ export const getUserData = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      res.json({ success: false, message: "User not found" });
+      return res.json({ success: false, message: "User not found" });
     }
-    res.json({ success: true, user });
+    return res.json({ success: true, user });
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: error.message });
+    return res.json({ success: false, message: error.message });
   }
 };
 
 export const updateUserData = async (req, res) => {
   try {
-    const { userId } = req.auth();
-    let { username, bio, location, full_name } = req.body;
+    // Add null check for req.auth()
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: "Authentication failed" });
+    }
+    
+    const { userId } = req.auth() || {};
+    
+    // Check if userId exists
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "User ID not found in authentication" });
+    }
+    
+    // Check if req.body exists and handle FormData properly
+    let username = req.body?.username;
+    const bio = req.body?.bio;
+    const location = req.body?.location;
+    const full_name = req.body?.full_name;
 
     const tempUser = await User.findById(userId);
     if (!tempUser) {
@@ -86,8 +101,9 @@ export const updateUserData = async (req, res) => {
       full_name,
     };
 
-    const profile = req.files.profile && req.files.profile[0];
-    const cover = req.files.cover && req.files.cover[0];
+    // Add null check for req.files
+    const profile = req.files && req.files.profile && req.files.profile[0];
+    const cover = req.files && req.files.cover && req.files.cover[0];
 
     if (profile) {
       try {
@@ -292,10 +308,15 @@ export const sendConnectionRequest = async (req, res) => {
       });
 
       //inngest function invoking
-      await inngest.send({
-        name:'app/connection-request',
-        data : {connectionId: newConnection._id}
-      })
+      try {
+        await inngest.send({
+          name:'app/connection-request',
+          data : {connectionId: newConnection._id}
+        });
+      } catch (inngestError) {
+        console.log("Inngest error (connection request will still be processed):", inngestError.message);
+        // Continue without Inngest - connection request is still created
+      }
       
       return res.json({
         success: true,
@@ -306,12 +327,25 @@ export const sendConnectionRequest = async (req, res) => {
         success: false,
         message: "You are already connected with this user",
       });
+    } else if (connection.status === "pending") {
+      // Check if the current user sent the pending request
+      if (connection.from_user_id.toString() === userId) {
+        return res.json({
+          success: false,
+          message: "You already sent a connection request to this user",
+        });
+      } else {
+        // The other user sent a request to the current user
+        return res.json({
+          success: false,
+          message: "This user has already sent you a connection request. Check your pending connections.",
+        });
+      }
     }
-
 
     return res.json({
       success: false,
-      message: "Connection request Pending",
+      message: "Unable to process connection request",
     });
   } catch (error) {
     console.log(error);
@@ -330,9 +364,13 @@ export const getUserConnection = async (req, res) => {
       "connections followers following"
     );
 
-    const connections = user.connections;
-    const followers = user.followers;
-    const following = user.following;
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    const connections = user.connections || [];
+    const followers = user.followers || [];
+    const following = user.following || [];
 
     const pendingConnections = await Connection.find({
       to_user_id: userId,
@@ -340,10 +378,10 @@ export const getUserConnection = async (req, res) => {
     }).populate("from_user_id");
 
     const pendingUsers = pendingConnections.map((conn) => conn.from_user_id);
-    res.json({success: true, connections, followers, following, pendingUsers});
+    return res.json({success: true, connections, followers, following, pendingUsers});
   } catch (error) {
     console.log(error);
-    res.json({
+    return res.json({
       success: false,
       message: error.message,
     });
