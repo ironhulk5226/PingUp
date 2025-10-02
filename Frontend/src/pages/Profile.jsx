@@ -6,7 +6,7 @@ import UserProfileInfo from '../components/UserProfileInfo';
 import PostCard from '../components/PostCard';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
-import ProfileModel from '../components/profileModel'
+import ProfileModel from '../components/ProfileModel'
 import { useAuth } from '@clerk/clerk-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
