@@ -1,7 +1,5 @@
 import mongoose from 'mongoose';
 
-// enum --> “predefined list” (only these values are accepted)
-
 const connectionSchema = new mongoose.Schema({
     from_user_id:{type:String , ref:'User', required:true},
     to_user_id:{type:String , ref:'User', required:true},

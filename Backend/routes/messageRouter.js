@@ -8,8 +8,8 @@ const messageRouter = express.Router();
 // @/api/message/send
 messageRouter.post('/send', upload.single('image'), protect, sendMessage);
 
-// @/api/message/sse
-messageRouter.get('/sse', protect, sseController);
+// // @/api/message/sse
+// messageRouter.get('/sse', protect, sseController);
 
 // @/api/message/chat-messages
 messageRouter.get('/chat-messages', protect, getChatMessages);

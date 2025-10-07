@@ -57,9 +57,9 @@ export const sseController = (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  // Add the client's response object to the connections objes
+  // Add the client's response object to the connections object
   connections[targetUserId] = res;
-  // Send an initial even to the client
+  // Send an initial event to the client
   res.write("log: connected to SSE stream\n\n");
 
   req.on("close", () => {

@@ -46,6 +46,7 @@ function App() {
 },[user , getToken , dispatch])
 
    useEffect(()=>{
+    console.log(pathnameRef.current)
     pathnameRef.current = pathname
    },[pathname])
 
